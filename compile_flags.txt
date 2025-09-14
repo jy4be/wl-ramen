@@ -1,0 +1,11 @@
+-pedantic
+-Og 
+-Wall 
+-Wextra 
+-fstack-protector 
+-I 
+include
+-L
+lib
+-lwayland-client
+-lrt
