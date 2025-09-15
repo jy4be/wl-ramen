@@ -185,12 +185,35 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer, uint serial, struct 
     printf("enta\n");
 }
 
+static void
+wl_pointer_leave(void *data, struct wl_pointer *wl_pointer, uint serial, struct wl_surface *wl_surface) {
+
+}
+
+static void
+wl_pointer_motion(void *data, struct wl_pointer *wl_pointer, uint time, wl_fixed_t surface_x, wl_fixed_t surface_y) {
+
+}
+
+static void
+wl_pointer_frame(void *data, struct wl_pointer *wl_pointer){
+
+}
+
 struct wl_pointer_listener wl_pointer_listener = {
-    .enter = wl_pointer_enter
+    .enter = wl_pointer_enter,
+    .leave = wl_pointer_leave,
+    .motion = wl_pointer_motion,
+    .frame = wl_pointer_frame
 };
 
-int
-main(int argc, char *argv[])
+int run();
+
+int main(){
+    return run();
+}
+
+int run()
 {
     struct client_state state = { 0 };
     state.frame = 128;
