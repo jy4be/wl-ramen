@@ -9,3 +9,4 @@ include
 lib
 -lwayland-client
 -lrt
+-lm

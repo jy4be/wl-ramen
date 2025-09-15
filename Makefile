@@ -10,8 +10,8 @@ SOURCE_DIRS = src
 WLXML_DIR = wl_XML
 TESTS = 
 
-CFLAGS = -Wall -Wextra -fstack-protector -I $(IDIR) -L $(LIB_DIRS) -lwayland-client  -lrt
-LDFLAGS = -I $(IDIR) -L$(BUILDDIR) -L$(LIB_DIRS) -lwayland-client -lrt
+CFLAGS = -Wall -Wextra -fstack-protector -I $(IDIR) -L $(LIB_DIRS) -lwayland-client  -lrt -lm
+LDFLAGS = -I $(IDIR) -L$(BUILDDIR) -L$(LIB_DIRS) -lwayland-client -lrt -lm
 OPTIMIZATION = -Og
 
 TESTPATH = $(BUILDDIR)/$(TESTDIR)

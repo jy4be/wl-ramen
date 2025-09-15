@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <wayland-client.h>
 #include <linux/input-event-codes.h>
+#include <wayland-util.h>
 #include "wlr-shell-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "basewl.h"
@@ -239,8 +240,8 @@ static void wl_pointer_motion(
         wl_fixed_t surface_x, 
         wl_fixed_t surface_y) 
 {
-    ((struct bwl_state*) data)->pointer.x = surface_x;
-    ((struct bwl_state*) data)->pointer.y = surface_y;
+    ((struct bwl_state*) data)->pointer.x = wl_fixed_to_int(surface_x);
+    ((struct bwl_state*) data)->pointer.y = wl_fixed_to_int(surface_y);
 }
 
 static void wl_pointer_frame(
