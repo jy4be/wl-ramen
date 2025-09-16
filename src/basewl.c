@@ -15,6 +15,7 @@
 #include <wayland-client.h>
 #include <linux/input-event-codes.h>
 #include <wayland-util.h>
+#include "types.h"
 #include "wlr-shell-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "basewl.h"
@@ -88,7 +89,7 @@ struct bwl_state {
     bool shouldClose;
 
     /* Abstract draw callback*/
-    struct bwl_command (*abstr_update)(uint32_t*, uint16_t, uint16_t, struct bwl_pointer_info);
+    struct bwl_command (*abstr_update)(struct screenData Data, struct bwl_pointer_info);
     struct bwl_pointer_info pointer;
 };
 
@@ -132,6 +133,7 @@ static void reset_frame(struct bwl_state *state)
     wl_shm_pool_destroy(pool);
     close(fd);
 
+    memset(data, 0, size);
     state->pixels = data;
     state->frame++;
     state->wl_buffer = buffer;
@@ -139,7 +141,7 @@ static void reset_frame(struct bwl_state *state)
 
 static void draw(struct bwl_state *state){
     struct bwl_command cmd =
-        state->abstr_update(state->pixels, state->width, state->height, state->pointer);
+        state->abstr_update((struct screenData) {state->width, state->height, state->pixels}, state->pointer);
     state->shouldClose = cmd.shouldClose;
     wl_surface_attach(
                     state->wl_surface, 
@@ -240,8 +242,8 @@ static void wl_pointer_motion(
         wl_fixed_t surface_x, 
         wl_fixed_t surface_y) 
 {
-    ((struct bwl_state*) data)->pointer.x = wl_fixed_to_int(surface_x);
-    ((struct bwl_state*) data)->pointer.y = wl_fixed_to_int(surface_y);
+    ((struct bwl_state*) data)->pointer.position = 
+        (struct vector) {wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y)};
 }
 
 static void wl_pointer_frame(

@@ -3,10 +3,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "types.h"
 
 struct bwl_pointer_info {
-    uint16_t x;
-    uint16_t y;
+    struct vector position;
     bool isLeftPressed;
     bool isRightPressed;
 };
@@ -14,7 +14,7 @@ struct bwl_pointer_info {
 struct bwl_settings {
     uint16_t width;
     uint16_t height;
-    struct bwl_command (*update)(uint32_t *pixels, uint16_t width, uint16_t height, struct bwl_pointer_info pointer);
+    struct bwl_command (*update)(struct screenData screen, struct bwl_pointer_info pointer);
 };
 
 struct bwl_command {

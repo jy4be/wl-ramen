@@ -1,6 +1,6 @@
 CC = gcc
 
-PRGNAME = wl_Qsl
+PRGNAME = wl_RaMen
 IDIR = include
 BUILDDIR = build
 TESTDIR = src/tests

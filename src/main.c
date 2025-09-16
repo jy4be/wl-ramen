@@ -2,105 +2,62 @@
 #include <stdint.h>
 #include "basewl.h"
 #include <stdio.h>
-#include <math.h>
+#include "math_util.h"
+#include "types.h"
+#include "graphics.h"
 
-struct screenData {
-    uint16_t width;
-    uint16_t height;
-    uint32_t *pixels;
-};
+struct radialDivisions Divisions = {0};
 
-struct vector {
-    uint16_t x;
-    uint16_t y;
-};
+struct bwl_command update(struct screenData screen, struct bwl_pointer_info pointer) 
+{
+    uint16_t outerRadius = 100;
+    uint16_t innerRadius = 70;
 
-struct vector* generateCircleCenters(struct screenData screen, uint8_t circlesAmount, uint16_t radius, struct vector* outBuffer);
-
-void setPixel(struct screenData screen, uint16_t x, uint16_t y, uint32_t colour);
-
-void drawCircle(struct screenData screen, uint16_t radius, uint16_t x, uint16_t y, uint32_t colour);
-
-bool isInCircle(uint16_t radius, uint16_t x, uint16_t y, uint16_t xOrg, uint16_t yOrg);
-
-struct vector* generateCircleCenters(struct screenData screen, uint8_t circlesAmount, uint16_t radius, struct vector* outBuffer){
-    double fullCircle = 2 * 3.14;
-    uint16_t centerX = screen.width /2 ;
-    uint16_t centerY = screen.height/2 ;
-
-    for (int circleIndex = 0; circleIndex < circlesAmount; circleIndex++){
-        double currentRadians = (fullCircle / circlesAmount) * circleIndex;
-        double xOff = centerX + sin(currentRadians) * radius;
-        double yOff = centerY + cos(currentRadians) * radius;
-        outBuffer[circleIndex] = (struct vector) {.x = xOff, .y = yOff};
-    }
-
-    return outBuffer;
-}
-
-void drawCircle(struct screenData screen, uint16_t radius, uint16_t centerX, uint16_t centerY, uint32_t colour){
-    uint16_t topLeftX = centerX - radius < 0 ? 0 : centerX - radius;
-    uint16_t topLeftY = centerY - radius < 0 ? 0 : centerY - radius;
-    uint16_t bottomRightX = centerX + radius > screen.width ? screen.width : centerX + radius;
-    uint16_t bottomRightY = centerY + radius > screen.height ? screen.height : centerY + radius;
-    
-    for (uint16_t x = topLeftX; x < bottomRightX; x++){
-        for (uint16_t y = topLeftY; y < bottomRightY; y++){
-            if (isInCircle(radius, x, y, centerX, centerY))
-                setPixel(screen, x, y, colour);
+    for (int x = screen.width/2 - outerRadius; x < screen.width/2 + outerRadius; x++) {
+        for (int y = screen.height/2 - outerRadius; y < screen.height/2 + outerRadius; y++) {
+            struct vector current = {x, y};
+            if (mu_isInCircle(outerRadius, current, Divisions.center) && 
+                !mu_isInCircle(innerRadius, current, Divisions.center))
+            {
+                if (mu_arePointsInSameDivision(pointer.position, current,  Divisions))
+                    g_setPixel(screen, x, y, 0xFF000000);
+                else
+                    g_setPixel(screen, x, y, 0xFFFFFFFF);
+            }
             else
-                setPixel(screen, x, y, 0x20202020);
+                g_setPixel(screen, x, y, 0x20202020);
         }
     }
-}
 
-void setPixel(struct screenData screen, uint16_t x, uint16_t y, uint32_t colour){
-    screen.pixels[y * screen.width + x] = colour;
-}
-
-
-bool isInCircle(uint16_t radius, uint16_t x, uint16_t y, uint16_t xOrg, uint16_t yOrg){
-    return (xOrg-x)*(xOrg-x) + (yOrg - y)*(yOrg - y) < radius*radius;
-}
-
-struct bwl_command update(uint32_t *pixels, uint16_t width, uint16_t height, struct bwl_pointer_info pointer) 
-{
-    for (size_t i = 0; i < width * height; i++){
-        pixels[i] = 0;//0x20202020;
+    for (int i = 0; i < Divisions.divisionsAmount; i++){
+        g_line(screen, Divisions.outerDivisions[i], Divisions.innerDivisions[i], 0xFF000000);
     }
-
-    struct screenData screen = {
-        .pixels = pixels,
-        .width = width,
-        .height = height
-    };
-
-    const uint8_t circlesAmount = 5;
-
-    struct vector centers[circlesAmount];
-    generateCircleCenters(screen, circlesAmount, 100, centers);
-
-    for (int i = 0; i < circlesAmount; i++){
-        bool isHoveringCircle = isInCircle(20, pointer.x, pointer.y, centers[i].x, centers[i].y);
-        if (isHoveringCircle)
-            drawCircle(screen, 20, centers[i].x, centers[i].y, 0xFFFFFFFF);
-        else
-            drawCircle(screen, 20, centers[i].x, centers[i].y, 0xFF000000);
-
-        if (isHoveringCircle && pointer.isLeftPressed)
-            printf("Circle pressed: %d\n", i);
-    }
-    //drawCircles(8, 100, (struct screenData){.width = width, .height = height, .pixels = pixels});
     return (struct bwl_command) {
         .shouldClose = pointer.isRightPressed};
 }
 
 int main(){
+    struct vector screenDimensions = {.x = 640, .y = 480};
+    struct vector center = {.x = screenDimensions.x/2, .y = screenDimensions.y/2};
+
+    Divisions.divisionsAmount = 5;
+    struct vector outer[Divisions.divisionsAmount];
+    struct vector inner[Divisions.divisionsAmount];
+    struct vector normals[Divisions.divisionsAmount];
+
+    Divisions.center = center;
+    Divisions.outerDivisions = outer;
+    Divisions.innerDivisions = inner;
+    Divisions.normals = normals;
+    mu_generateRadialDivisions(center, Divisions.divisionsAmount, 100, outer);
+    mu_generateRadialDivisions(center, Divisions.divisionsAmount, 70, inner);
+    mu_generateNormals(Divisions);
+
     bwl_init(
         (struct bwl_settings){
             .update = update,
-            .width = 640,
-            .height = 480});
+            .width = screenDimensions.x,
+            .height = screenDimensions.y});
 
     return 0;
 }
