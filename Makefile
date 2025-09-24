@@ -1,17 +1,18 @@
 CC = gcc
 
 PRGNAME = wl_RaMen
-IDIR = include
+IDIR = include -I/usr/include/freetype2
 BUILDDIR = build
 TESTDIR = src/tests
 
 LIB_DIRS = lib
 SOURCE_DIRS = src
+HEADER_DIR = src/headers
 WLXML_DIR = wl_XML
 TESTS = 
 
-CFLAGS = -Wall -Wextra -fstack-protector -I $(IDIR) -L $(LIB_DIRS) -lwayland-client  -lrt -lm
-LDFLAGS = -I $(IDIR) -L$(BUILDDIR) -L$(LIB_DIRS) -lwayland-client -lrt -lm
+CFLAGS = -Wall -Wextra -fstack-protector -I $(IDIR) -I $(HEADER_DIR) -L $(LIB_DIRS) -lwayland-client  -lrt -lm -lfreetype
+LDFLAGS = -I $(IDIR) -L$(BUILDDIR) -L$(LIB_DIRS) -lwayland-client -lrt -lm -lfreetype
 OPTIMIZATION = -Og
 
 TESTPATH = $(BUILDDIR)/$(TESTDIR)
@@ -42,17 +43,17 @@ exec: $(OBJS)
 
 
 WLXML:
-	@printf "Generating boilerplate and header from XMLS\n"
-	wayland-scanner private-code \
+	@printf "Generating boilerplate and header from XMLs\n"
+	@wayland-scanner private-code \
 	  < $(WLXML_DIR)/wlr-layer-shell-unstable-v1.xml \
 	  > $(SOURCE_DIRS)/wlr-shell-protocol.c
-	wayland-scanner client-header \
+	@wayland-scanner client-header \
 	  < $(WLXML_DIR)/wlr-layer-shell-unstable-v1.xml \
-	  > $(SOURCE_DIRS)/wlr-shell-client-protocol.h
-	wayland-scanner client-header \
+	  > $(HEADER_DIR)/wlr-shell-client-protocol.h
+	@wayland-scanner client-header \
 	  < /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml \
-	  > $(SOURCE_DIRS)/xdg-shell-client-protocol.h
-	wayland-scanner private-code \
+	  > $(HEADER_DIR)/xdg-shell-client-protocol.h
+	@wayland-scanner private-code \
 	  < /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml \
 	  > $(SOURCE_DIRS)/xdg-shell-protocol.c
 

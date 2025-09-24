@@ -27,28 +27,32 @@ struct vector mu_rot90Deg(struct vector v){
     };
 }
 
-struct vector* mu_generateRadialDivisions(struct vector center, uint8_t divisionsAmount, uint16_t radius, struct vector* outBuffer){
+void mu_generateRadialDivisions(struct dial *dial){
     double fullCircle = 2 * 3.14;
 
-    for (int circleIndex = 0; circleIndex <= divisionsAmount; circleIndex++){
-        double currentRadians = (fullCircle / divisionsAmount) * circleIndex;
-        double xOff = center.x + sin(currentRadians) * radius;
-        double yOff = center.y + cos(currentRadians) * radius;
-        outBuffer[circleIndex] = (struct vector) {.x = xOff, .y = yOff};
-    }
+    for (int circleIndex = 0; circleIndex <= dial->divisionsAmount; circleIndex++){
+        double currentRadians = (fullCircle / dial->divisionsAmount) * circleIndex;
+        double xOff = sin(currentRadians);
+        double yOff = cos(currentRadians);
 
-    return outBuffer;
+        dial->outerDivisions[circleIndex] = (struct vector) {
+            .x = dial->center.x + xOff * dial->outerRadius,
+            .y = dial->center.y + yOff * dial->outerRadius};
+        dial->innerDivisions[circleIndex] = (struct vector) {
+            .x = dial->center.x + xOff * dial->innerRadius,
+            .y = dial->center.y + yOff * dial->innerRadius};
+    }
 }
-struct vector* mu_generateNormals(struct radialDivisions divisions)
+struct vector* mu_generateNormals(struct dial *divisions)
 {
-    for (int i = 0; i < divisions.divisionsAmount; i++){
-        divisions.normals[i] =
-            mu_rot90Deg(mu_vecSub(divisions.outerDivisions[i], divisions.center));
+    for (int i = 0; i < divisions->divisionsAmount; i++){
+        divisions->normals[i] =
+            mu_rot90Deg(mu_vecSub(divisions->outerDivisions[i], divisions->center));
     }
-    return divisions.normals;
+    return divisions->normals;
 }
 
-bool mu_isInDivision(struct vector sample, struct radialDivisions divisions, uint16_t divisionIndex){
+bool mu_isInDivision(struct vector sample, struct dial divisions, uint16_t divisionIndex){
     uint16_t nextDivisionIndex = 
         (divisionIndex + 1) % divisions.divisionsAmount;
 
@@ -65,7 +69,15 @@ bool mu_isInDivision(struct vector sample, struct radialDivisions divisions, uin
     return false;
 }
 
-bool mu_arePointsInSameDivision(struct vector p1, struct vector p2, struct radialDivisions divisions)
+size_t mu_divisionIndexFromSample(struct vector sample, struct dial dial){
+    for (int i = 0; i < dial.divisionsAmount; i++){
+        if (mu_isInDivision(sample, dial, i))
+            return i;
+    }
+    return 0;
+}
+
+bool mu_arePointsInSameDivision(struct vector p1, struct vector p2, struct dial divisions)
 {
     struct vector center = divisions.center;
 

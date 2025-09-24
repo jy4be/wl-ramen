@@ -5,8 +5,13 @@
 -fstack-protector 
 -I 
 include
+-I
+/usr/include/freetype2
+-I
+src/headers
 -L
 lib
 -lwayland-client
 -lrt
 -lm
+-lfreetype
