@@ -2,21 +2,20 @@
 #include <stdint.h>
 #include "basewl.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "math_util.h"
 #include "types.h"
 #include "graphics.h"
 #include "text.h"
+#include "banner.h"
 
 struct dial Dial;
 struct stringPixelBuffers StringBuffers;
 
 
-
-
 void setupDial(struct dial *dial, struct dialSettings settings);
-void renderBanner(struct screenData screen, struct stringPixelBuffers pixelBuffers, struct bannerSettings banner, size_t stringIndex);
 
-struct bwl_command update(struct screenData screen, struct bwl_pointer_info pointer) 
+struct bwl_command update(struct screenData screen, struct bwl_pointer_info pointer)
 {
     size_t currentDial = mu_divisionIndexFromSample(pointer.position, Dial);
     for (int x = screen.width/2 - Dial.outerRadius; x < screen.width/2 + Dial.outerRadius; x++) {
@@ -51,21 +50,40 @@ struct bwl_command update(struct screenData screen, struct bwl_pointer_info poin
         .shouldClose = pointer.isRightPressed};
 }
 
-int main(int argc, const char **argv){
-    /*const char *strings[3] = {
-        "BarFoo",
-        "FarBar",
-        "Foobar"};*/
+struct inputStrings readstdin(void)
+{
+    struct inputStrings strings = {0};
+    char *line = NULL;
+    size_t linesiz = 0;
+    ssize_t len;
+ 
+    for (size_t i = 0; ((len = getline(&line, &linesiz, stdin)) != -1) && strings.amount <= 16; i++) {
+        if (line[len - 1] == '\n')
+            line[len - 1] = '\0';
+        strings.lines[i] = strdup(line);
+        strings.amount++;
+    }
+    free(line);
     
-    StringBuffers = pixelBufferFromStrings(argv + 1, argc - 1, (struct vector) {200, 100});
+    return strings;
+}
+
+void freeInputStrings(struct inputStrings strings) {
+    for (size_t i = 0; i < strings.amount;i++){
+        free(strings.lines[i]);
+    }
+}
+
+int main(int argc, const char **argv){
+    struct inputStrings strings = readstdin();
     struct vector screenDimensions = {.x = 640, .y = 600};
     setupDial(&Dial, 
         (struct dialSettings) {
             .screenDimensions = screenDimensions,
             .outerRadius = 200,
             .innerRadius = 100,
-            .divisionsAmount = argc - 1,
-            .strings = argv + 1,
+            .divisionsAmount = strings.amount,
+            .strings = strings.lines,
             .banner = (struct bannerSettings) {
                 .size = (struct vector) {200, 50},
                 .position = (struct vector) {
@@ -80,6 +98,7 @@ int main(int argc, const char **argv){
             .width = screenDimensions.x,
             .height = screenDimensions.y});
 
+    freeInputStrings(strings);
     freePixelBuffer(StringBuffers);
     return 0;
 }
@@ -94,33 +113,9 @@ void setupDial(struct dial *dial, struct dialSettings settings){
         .y = settings.screenDimensions.y / 2};
     dial->strings = settings.strings;
     dial->banner = settings.banner;
+    StringBuffers = pixelBufferFromStrings(settings.strings, settings.divisionsAmount, settings.banner.size);
     
     mu_generateRadialDivisions(dial);
     mu_generateNormals(dial);
 }
 
-void renderBanner(struct screenData screen, struct stringPixelBuffers pixelBuffers, struct bannerSettings banner, size_t stringIndex){
-    for ( int i = 0; i < banner.size.x; i++) {
-        for ( int j = 0; j < banner.size.y; j++) {
-            g_setPixel(screen, banner.position.x + i, banner.position.y + j, banner.bgColour);
-        }
-    }
-    int32_t xMax = pixelBuffers.stringPixelLength[stringIndex];
-    int32_t yMax = banner.size.y;
-    int32_t startingXOffset = (banner.size.x / 2) - (pixelBuffers.stringPixelLength[stringIndex] / 2);
-    if (xMax > banner.size.x)
-        xMax = banner.size.x;
-    if (yMax > pixelBuffers.bufferDimensions.y)
-        yMax = pixelBuffers.bufferDimensions.y;
-    for (int i = 0; i < yMax; i++){
-        for (int j = 0; j < xMax; j++){
-            if (startingXOffset + j < 0)
-                continue;
-            g_setPixel(screen, j + banner.position.x + startingXOffset, i + banner.position.y, 
-                pixelBuffers.buffers[stringIndex][i * pixelBuffers.bufferDimensions.x + j] ?
-                    banner.fgColour :
-                    banner.bgColour);
-
-        }
-    }
-}

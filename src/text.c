@@ -57,7 +57,7 @@ size_t renderFont(struct fontData data, uint8_t* buffer, struct vector bufferDim
 }
 
 struct stringPixelBuffers pixelBufferFromStrings(
-        const char** strings, 
+        char** strings, 
         size_t stringsAmount, 
         struct vector bufferDimensions)
 {

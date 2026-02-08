@@ -11,7 +11,7 @@ struct stringPixelBuffers {
     size_t stringPixelLength[16];
 };
 
-struct stringPixelBuffers pixelBufferFromStrings(const char** strings, size_t stringsAmount, struct vector bufferDimensions);
+struct stringPixelBuffers pixelBufferFromStrings( char** strings, size_t stringsAmount, struct vector bufferDimensions);
 void freePixelBuffer(struct stringPixelBuffers);
 
 #endif

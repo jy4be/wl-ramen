@@ -37,7 +37,7 @@ struct dial {
     struct vector outerDivisions[16];
     struct vector innerDivisions[16];
     struct vector normals[16];
-    const char** strings;
+    char** strings;
     struct bannerSettings banner;
 };
 
@@ -46,10 +46,14 @@ struct dialSettings {
     uint16_t divisionsAmount;
     uint16_t outerRadius;
     uint16_t innerRadius;
-    const char** strings;
+    char** strings;
     struct bannerSettings banner;
 };
 
+struct inputStrings {
+    size_t amount;
+    char* lines[16];
+};
 
 
 #endif
