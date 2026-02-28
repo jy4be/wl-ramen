@@ -14,14 +14,15 @@ TESTS =
 CFLAGS = -Wall -Wextra -fstack-protector -I $(IDIR) -I $(HEADER_DIR) -L $(LIB_DIRS) -lwayland-client  -lrt -lm -lfreetype
 LDFLAGS = -I $(IDIR) -L$(BUILDDIR) -L$(LIB_DIRS) -lwayland-client -lrt -lm -lfreetype
 OPTIMIZATION = -Og
+DBGFLAGS = 
 
 TESTPATH = $(BUILDDIR)/$(TESTDIR)
 SOURCES = $(foreach dir, $(SOURCE_DIRS), $(wildcard $(dir)/*.c))
-OBJS = $(patsubst %.c, $(BUILDDIR)/%.o, $(SOURCES))
+OBJS = $(patsubst %.c, $(BUILDDIR)/%.o, $(SOURCES)) fontfile.o
 
-all: run
+all: tree WLXML font exec
 
-run: tree WLXML exec
+run: tree WLXML font exec
 	@./$(BUILDDIR)/$(PRGNAME)
 
 tree:
@@ -31,15 +32,21 @@ tree:
 		mkdir -p $(BUILDDIR)/$$dir; \
 	done
 
+debug: DBGFLAGS = -pg
+debug: tree WLXML font exec
 release: OPTIMIZATION=-O3
-release: tree WLXML exec
+release: tree WLXML font exec
 test: tree $(TESTS)
 
 exec: $(OBJS)
 	@printf "Building Executable\n"
 	@printf "\e[1;35m(LD)\e[m $(BUILDDIR)/$(PRGNAME)"
-	@$(CC) -o $(BUILDDIR)/$(PRGNAME) $^ $(OPIMIZATION) $(LDFLAGS)
+	@$(CC) -o $(BUILDDIR)/$(PRGNAME) $^ $(OPIMIZATION) $(DBGFLAGS) $(LDFLAGS)
 	@printf " [DONE]\n"
+
+font:
+	@printf "Create Binary file from Font file\n"
+	@ld -r -b binary -o $(BUILDDIR)/fontfile.o LiberationSans-Regular.ttf
 
 
 WLXML:
@@ -60,13 +67,13 @@ WLXML:
 
 $(TESTS): $(OBJS)
 	@printf "(CC) $(TESTPATH)/$@.o\n"
-	@$(CC) -c -o $(TESTPATH)/$@.o $(TESTDIR)/$@.c $(OPTIMIZATION) $(CFLAGS)
+	@$(CC) -c -o $(TESTPATH)/$@.o $(TESTDIR)/$@.c $(OPTIMIZATION) $(DBGFLAGS) $(CFLAGS)
 	@printf "\e[1;32m(LD)\e[m $(TESTPATH)/$@\n"
-	@$(CC) -o $(TESTPATH)/$@ $(TESTPATH)/$@.o $(OPIMIZATION) $(LDFLAGS)
+	@$(CC) -o $(TESTPATH)/$@ $(TESTPATH)/$@.o $(OPIMIZATION) $(DBGFLAGS) $(LDFLAGS)
 
 $(BUILDDIR)/%.o: %.c
 	@printf "(CC) $@"
-	@$(CC) -c -o $@ $^ $(OPTIMIZATION) $(CFLAGS)
+	@$(CC) -c -o $@ $^ $(OPTIMIZATION) $(DBGFLAGS) $(CFLAGS)
 	@printf " [DONE]\n"
 
 

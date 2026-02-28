@@ -5,13 +5,17 @@
 
 
 struct stringPixelBuffers {
-    struct vector bufferDimensions;
     size_t buffersAmount;
     uint8_t **buffers;
-    size_t stringPixelLength[16];
+    struct vector stringPixelDimensions[16];
+    uint32_t bearings[16];
 };
 
-struct stringPixelBuffers pixelBufferFromStrings( char** strings, size_t stringsAmount, struct vector bufferDimensions);
-void freePixelBuffer(struct stringPixelBuffers);
+struct stringPixelBuffers txt_pixelBufferFromStrings(
+        char** strings, 
+        size_t stringsAmount, 
+        uint32_t fontSize,
+        const char *fontFile);
+void txt_freePixelBuffer(struct stringPixelBuffers);
 
 #endif

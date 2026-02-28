@@ -15,6 +15,12 @@ struct vector mu_vecSub(struct vector v1, struct vector v2){
         .y = v1.y - v2.y};
 }
 
+struct vector mu_vecScale(struct vector v, double scalar){
+    return (struct vector) {
+        .x = v.x * scalar,
+        .y = v.y * scalar};
+}
+
 int32_t mu_dotProduct(struct vector v1, struct vector v2)
 {
     return v1.x * v2.x + v1.y * v2.y;
@@ -52,14 +58,30 @@ struct vector* mu_generateNormals(struct dial *divisions)
     return divisions->normals;
 }
 
-bool mu_isInDivision(struct vector sample, struct dial divisions, uint16_t divisionIndex){
-    uint16_t nextDivisionIndex = 
-        (divisionIndex + 1) % divisions.divisionsAmount;
+void mu_generateTabsCenters(struct dial *dial){
+    double fullCircle = 2 * 3.14;
+    uint32_t centerRadius = (dial->outerRadius + dial->innerRadius) / 2;
 
-    struct vector normal1 = divisions.normals[divisionIndex];
-    struct vector normal2 = divisions.normals[nextDivisionIndex];
+    for (int circleIndex = 0; circleIndex <= dial->divisionsAmount; circleIndex++){
+        double currentRadians = 
+            (fullCircle / dial->divisionsAmount) * 
+                (circleIndex + 0.5);
+        double xOff = sin(currentRadians);
+        double yOff = cos(currentRadians);
+        dial->tabsCenters[circleIndex] = (struct vector) {
+            .x = dial->center.x + xOff * centerRadius,
+            .y = dial->center.y + yOff * centerRadius};
+    }
+}
+
+bool mu_isInDivision(struct vector sample, struct dial *dial, uint16_t divisionIndex){
+    uint16_t nextDivisionIndex = 
+        (divisionIndex + 1) % dial->divisionsAmount;
+
+    struct vector normal1 = dial->normals[divisionIndex];
+    struct vector normal2 = dial->normals[nextDivisionIndex];
     struct vector centerToPointer = 
-        mu_vecSub(divisions.center, sample);
+        mu_vecSub(dial->center, sample);
         
     if (mu_dotProduct(normal1, centerToPointer) > 0 && 
         mu_dotProduct(normal2, centerToPointer) <=0)
@@ -69,27 +91,30 @@ bool mu_isInDivision(struct vector sample, struct dial divisions, uint16_t divis
     return false;
 }
 
-size_t mu_divisionIndexFromSample(struct vector sample, struct dial dial){
-    for (int i = 0; i < dial.divisionsAmount; i++){
+size_t mu_divisionIndexFromSample(struct vector sample, struct dial *dial){
+    for (int i = 0; i < dial->divisionsAmount; i++){
         if (mu_isInDivision(sample, dial, i))
             return i;
     }
     return 0;
 }
 
-bool mu_arePointsInSameDivision(struct vector p1, struct vector p2, struct dial divisions)
+bool mu_arePointsInSameDivision(struct vector p1, struct vector p2, struct dial *dial)
 {
-    struct vector center = divisions.center;
+    if (dial->divisionsAmount == 1){
+        return true;
+    }
+    struct vector center = dial->center;
 
     struct vector centerToP1 = mu_vecSub(center, p1);
     struct vector centerToP2 = mu_vecSub(center, p2);
 
-    for (int i = 0; i < divisions.divisionsAmount; i++){
+    for (int i = 0; i < dial->divisionsAmount; i++){
         uint16_t nextDivisionIndex = 
-            (i + 1) % divisions.divisionsAmount;
+            (i + 1) % dial->divisionsAmount;
 
-        struct vector normal1 = divisions.normals[i];
-        struct vector normal2 = divisions.normals[nextDivisionIndex];
+        struct vector normal1 = dial->normals[i];
+        struct vector normal2 = dial->normals[nextDivisionIndex];
 
         if (mu_dotProduct(normal1, centerToP1) > 0 && 
             mu_dotProduct(normal2, centerToP1) <=0 &&

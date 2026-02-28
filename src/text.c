@@ -1,16 +1,57 @@
 #include "freetype/fttypes.h"
+#include "types.h"
 #include <freetype2/ft2build.h>
 #include <freetype/freetype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "text.h"
+
+//extern int binary_LiberationSans_Regular_ttf_size;
+extern uint8_t _binary_LiberationSans_Regular_ttf_start[];
+extern uint8_t* _binary_LiberationSans_Regular_ttf_end;
 
 struct fontData {
     FT_Library ft;
     FT_Face face;
 };
 
-size_t renderFont(struct fontData data, uint8_t* buffer, struct vector bufferDimensions, const char* text){
+struct layoutInfo {
+    uint32_t yBearing;
+    uint32_t bufferHeight;
+    uint32_t bufferWidth;
+};
+
+struct layoutInfo layoutFromString(struct fontData data, const char* text){
+    struct layoutInfo layout = {0};
+    char currentChar;
+    while ((currentChar = *(text++)) != '\0'){
+        FT_UInt glyphIndex = 
+            FT_Get_Char_Index(data.face, currentChar);
+        if (glyphIndex == 0)
+            continue;
+        FT_Load_Glyph(data.face, glyphIndex, FT_LOAD_DEFAULT);
+        FT_GlyphSlot glyph = data.face->glyph;
+
+        uint32_t height = glyph->metrics.height / 64;
+        uint32_t yBearing = glyph->metrics.horiBearingY / 64;
+
+        if (height + (height - yBearing) > layout.bufferHeight){
+            layout.bufferHeight = height + (height - yBearing);
+        }
+        if (yBearing > layout.yBearing)
+            layout.yBearing = yBearing;
+        layout.bufferWidth += glyph->metrics.horiAdvance / 64;
+    }
+    return layout;
+}
+
+void renderFont(
+        struct fontData data,
+        uint8_t* buffer,
+        struct  layoutInfo layout,
+        const char* text)
+{
     char currentChar;
     uint32_t x = 0;
     while ((currentChar = *(text++)) != '\0'){
@@ -22,21 +63,14 @@ size_t renderFont(struct fontData data, uint8_t* buffer, struct vector bufferDim
 
         FT_GlyphSlot glyph = data.face->glyph;
 
-        int bbox_ymax = data.face->bbox.yMax / 64;
         int glyph_width = glyph->metrics.width / 64;
         int advance = glyph->metrics.horiAdvance / 64;
         int xOff = (advance - glyph_width) / 2;
-        int yOff = bbox_ymax - glyph->metrics.horiBearingY / 64;
-        
+        int yOff = layout.yBearing - glyph->metrics.horiBearingY / 64;
 
         FT_Render_Glyph(data.face->glyph, FT_RENDER_MODE_NORMAL);
-        //FT_GlyphSlot glyph = data.face->glyph;
 
         int yMax = (int)glyph->bitmap.rows;
-        if (yMax >= bufferDimensions.y)
-            yMax = bufferDimensions.y - 1;
-        //printf("%d\n", yMax);
-
         int xMax = (int)glyph->bitmap.width;
         
         for (int i = 0; i < yMax; i++){
@@ -44,29 +78,25 @@ size_t renderFont(struct fontData data, uint8_t* buffer, struct vector bufferDim
             for (int j = 0; j < xMax; j++){
                 uint8_t pixel =
                     glyph->bitmap.buffer[i * glyph->bitmap.pitch + j];
-
                 uint16_t bufferX = x + j + xOff;
-                if (bufferX < bufferDimensions.x)
-                    buffer[rowOffset * bufferDimensions.x + bufferX] = pixel;
+
+                if (bufferX < layout.bufferWidth && rowOffset < layout.bufferHeight)
+                    buffer[rowOffset * layout.bufferWidth + bufferX] = pixel;
             }
         }
         x += advance;
     }
-    return x;
-    
 }
 
-struct stringPixelBuffers pixelBufferFromStrings(
+struct stringPixelBuffers txt_pixelBufferFromStrings(
         char** strings, 
         size_t stringsAmount, 
-        struct vector bufferDimensions)
+        uint32_t fontSize,
+        const char* fontFile)
 {
     struct stringPixelBuffers pixelBuffers = {
-        .buffersAmount = stringsAmount,
-        .bufferDimensions = bufferDimensions};
+        .buffersAmount = stringsAmount};
     struct fontData font;
-    const char *fontFile = 
-        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf";
 
     int errc;
     if((errc = FT_Init_FreeType(&font.ft)))
@@ -74,12 +104,20 @@ struct stringPixelBuffers pixelBufferFromStrings(
         printf("Cannot init Library: 0x%X\n", errc);
         return pixelBuffers;
     }
-    if((errc = FT_New_Face(font.ft, fontFile, 0, &font.face)))
-    {
-        printf("Cannot init face: 0x%X\n", errc);
-        return pixelBuffers;
+    if (fontFile[0] == '\0'){
+        if((errc = FT_New_Memory_Face(font.ft, _binary_LiberationSans_Regular_ttf_start, _binary_LiberationSans_Regular_ttf_end - _binary_LiberationSans_Regular_ttf_start, 0, &font.face)))
+        {
+            printf("Cannot init face: 0x%X\n", errc);
+            return pixelBuffers;
+        }
     }
-    if((errc = FT_Set_Pixel_Sizes(font.face, 0, 30)))
+    else
+        if((errc = FT_New_Face(font.ft, fontFile, 0, &font.face)))
+        {
+            printf("Cannot init face: 0x%X\n", errc);
+            return pixelBuffers;
+        }
+    if((errc = FT_Set_Pixel_Sizes(font.face, 0, fontSize)))
     {
         printf("Cannot set font pixel size: 0x%X\n", errc);
         return pixelBuffers;
@@ -93,14 +131,17 @@ struct stringPixelBuffers pixelBufferFromStrings(
          bufferIndex < stringsAmount; 
          bufferIndex++)
     {
+        struct layoutInfo layout = layoutFromString(font, strings[bufferIndex]);
+        pixelBuffers.bearings[bufferIndex] = layout.yBearing;
         pixelBuffers.buffers[bufferIndex] = malloc(
-                bufferDimensions.x * bufferDimensions.y);
-        size_t length = renderFont(
+                layout.bufferWidth * layout.bufferHeight);
+        memset(pixelBuffers.buffers[bufferIndex], 0x00, layout.bufferWidth * layout.bufferHeight);
+        renderFont(
                 font, 
                 pixelBuffers.buffers[bufferIndex], 
-                bufferDimensions, 
+                layout, 
                 strings[bufferIndex]);
-        pixelBuffers.stringPixelLength[bufferIndex] = length;
+        pixelBuffers.stringPixelDimensions[bufferIndex] = (struct vector) {layout.bufferWidth, layout.bufferHeight};
     }
 
     FT_Done_FreeType(font.ft);
@@ -109,7 +150,7 @@ struct stringPixelBuffers pixelBufferFromStrings(
 }
 
 
-void freePixelBuffer(struct stringPixelBuffers buffers){
+void txt_freePixelBuffer(struct stringPixelBuffers buffers){
     for (size_t bufferIndex = 0; 
          bufferIndex < buffers.buffersAmount; 
          bufferIndex++)

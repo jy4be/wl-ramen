@@ -78,11 +78,12 @@ struct bwl_state {
     /* Objects */
     struct wl_surface *wl_surface;
     struct wl_buffer *wl_buffer;
-
     struct wl_pointer *wl_pointer;
     struct zwlr_layer_surface_v1 *wlr_layer_surface;
+
     uint8_t frame;
     bool shouldRedraw;
+    bool isBufferReady;
     uint16_t width;
     uint16_t height;
     uint32_t *pixels;
@@ -96,8 +97,9 @@ struct bwl_state {
 static void wl_buffer_release(
         void *data, struct wl_buffer *wl_buffer)
 {
-    /* Sent by the compositor when it's no longer using this buffer */
-    wl_buffer_destroy(wl_buffer);
+    (void) wl_buffer;
+    struct bwl_state *state = (struct bwl_state*) data;
+    state->isBufferReady = true;
 }
 
 static const struct wl_buffer_listener wl_buffer_listener = {
@@ -132,6 +134,7 @@ static void reset_frame(struct bwl_state *state)
             width, height, stride, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
     close(fd);
+    wl_buffer_add_listener(buffer, &wl_buffer_listener, state);
 
     memset(data, 0, size);
     state->pixels = data;
@@ -140,9 +143,13 @@ static void reset_frame(struct bwl_state *state)
 }
 
 static void draw(struct bwl_state *state){
+    if (!state->isBufferReady){
+        return;
+    }
     struct bwl_command cmd =
         state->abstr_update((struct screenData) {state->width, state->height, state->pixels}, state->pointer);
     state->shouldClose = cmd.shouldClose;
+    state->isBufferReady = false;
     wl_surface_attach(
                     state->wl_surface, 
                     state->wl_buffer, 
@@ -150,7 +157,6 @@ static void draw(struct bwl_state *state){
                     0);
     wl_surface_damage_buffer(state->wl_surface, 0, 0, state->width, state->height);
     wl_surface_commit(state->wl_surface);
-
 }
 
 static void registry_global(
@@ -160,6 +166,7 @@ static void registry_global(
         const char *interface, 
         uint32_t version)
 {
+    (void) version;
     struct bwl_state *state = data;
     if 
         (strcmp(interface, wl_shm_interface.name) == 0) 
@@ -189,6 +196,9 @@ static void registry_global_remove(
         struct wl_registry *wl_registry, 
         uint32_t name)
 {
+    (void) data;
+    (void) wl_registry;
+    (void) name;
     /* This space deliberately left blank */
 }
 
@@ -204,6 +214,8 @@ static void zwlr_layer_surface_v1_configure(
         uint w, 
         uint h) 
 {
+    (void) w;
+    (void) h;
     struct bwl_state *state = data;
     zwlr_layer_surface_v1_ack_configure(
             zwlr_layer_surface_v1, serial);
@@ -224,6 +236,12 @@ static void wl_pointer_enter(
         wl_fixed_t surface_x, 
         wl_fixed_t surface_y) 
 {
+        (void) data;
+        (void) wl_pointer;
+        (void) serial;
+        (void) wl_surface;
+        (void) surface_x;
+        (void) surface_y;
 }
 
 static void wl_pointer_leave(
@@ -232,6 +250,10 @@ static void wl_pointer_leave(
         uint serial, 
         struct wl_surface *wl_surface) 
 {
+        (void) data;
+        (void) wl_pointer;
+        (void) serial;
+        (void) wl_surface;
 
 }
 
@@ -242,6 +264,8 @@ static void wl_pointer_motion(
         wl_fixed_t surface_x, 
         wl_fixed_t surface_y) 
 {
+    (void) wl_pointer;
+    (void) time;
     ((struct bwl_state*) data)->pointer.position = 
         (struct vector) {wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y)};
 }
@@ -250,6 +274,7 @@ static void wl_pointer_frame(
         void *data, 
         struct wl_pointer *wl_pointer)
 {
+    (void) wl_pointer;
     ((struct bwl_state*) data)->shouldRedraw = true;
 }
 
@@ -261,6 +286,9 @@ static void wl_pointer_button(
         uint button,
         uint state)
 {
+    (void) wl_pointer;
+    (void) serial;
+    (void) time;
     if (button == BTN_LEFT)
         ((struct bwl_state*) data)->pointer.isLeftPressed = 
             (state == WL_POINTER_BUTTON_STATE_PRESSED);
@@ -289,7 +317,9 @@ struct bwl_state *bwl_init(struct bwl_settings settings)
     state.abstr_update = settings.update;
     state.width = settings.width;
     state.height = settings.height;
+    state.isBufferReady = true;
     state.wl_display = wl_display_connect(NULL);
+    //TODO TOFIX
     state.wl_registry = 
         wl_display_get_registry(state.wl_display);
     wl_registry_add_listener(
@@ -319,6 +349,9 @@ struct bwl_state *bwl_init(struct bwl_settings settings)
             state.wlr_layer_surface, 
             &wlr_layer_surface_listener, 
             &state);
+    
+    //wl_pointer_set_cursor(struct wl_pointer *wl_pointer, uint32_t serial, struct wl_surface *surface, int32_t hotspot_x, int32_t hotspot_y)
+    
     wl_surface_commit(state.wl_surface);
     
     while (wl_display_dispatch(state.wl_display) && !state.shouldClose) {
@@ -327,6 +360,7 @@ struct bwl_state *bwl_init(struct bwl_settings settings)
             draw(&state);
             state.shouldRedraw = false;
         }
+        usleep(16);
     }
     wl_seat_release(state.wl_seat);
     munmap(state.pixels, state.width * state.height * 4);
