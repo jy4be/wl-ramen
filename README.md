@@ -37,9 +37,19 @@ There is a plethora of options and flags to change the design of the dial:
 | -s | Instead of fading out the colour towards the end, paint a solid colour |
 | -i [size] | Set the size of the icons for the dial options. Dials will be resized to square dimensions |
 
+The maximum amount of dial options is 16 by standard, but can be changed in code in the file `types.h`.
+
 # Compiling
 
 Use `make release` to build with optimizations, or just `make` to build without. The fisnished binary will be in /build.
 You may also build with `make debug` to enable debug flags. The binary is standalone, aside from the freetype2 library, and of course wayland.
 
 # Screenshots and examples
+Simple Dial
+`echo -e "Opt 1\nOpt 2\nOpt 3\nOpt 4" | ./build/wl_RaMen`
+
+Dial with changed options
+`echo -e "Opt 1\nOpt 2\nOpt 3\nOpt 4" | ./build/wl_RaMen -r 150 -d 200 -b center -s -cb "#40a0a0a0" -cs "#206080"`
+
+Dial with icons (Using some Adwaita Icons)
+`echo -e "Opt 1:Adwaita/16x16/places/folder.png\nOpt 2:Adwaita/16x16/places/user-home.png\nOpt 3:Adwaita/16x16/places/user-desktop.png" | ./build/wl_RaMen`
