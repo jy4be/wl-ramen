@@ -46,10 +46,13 @@ You may also build with `make debug` to enable debug flags. The binary is standa
 
 # Screenshots and examples
 Simple Dial
+![simple dial][https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Default_dial.png?raw=true]
 `echo -e "Opt 1\nOpt 2\nOpt 3\nOpt 4" | ./build/wl_RaMen`
 
 Dial with changed options
+![unsimple dial][https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Not_default_dial.png?raw=true]
 `echo -e "Opt 1\nOpt 2\nOpt 3\nOpt 4" | ./build/wl_RaMen -r 150 -d 200 -b center -s -cb "#40a0a0a0" -cs "#206080"`
 
 Dial with icons (Using some Adwaita Icons)
+![icon dial][https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Icon_dial.png?raw=true]
 `echo -e "Opt 1:Adwaita/16x16/places/folder.png\nOpt 2:Adwaita/16x16/places/user-home.png\nOpt 3:Adwaita/16x16/places/user-desktop.png" | ./build/wl_RaMen`
