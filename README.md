@@ -41,18 +41,24 @@ The maximum amount of dial options is 16 by standard, but can be changed in code
 
 # Compiling
 
-Use `make release` to build with optimizations, or just `make` to build without. The fisnished binary will be in /build.
+Use `make release` to build with optimizations, or just `make` to build without. The finished binary will be in /build.
 You may also build with `make debug` to enable debug flags. The binary is standalone, aside from the freetype2 library, and of course wayland.
 
 # Screenshots and examples
 Simple Dial
-![simple dial][https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Default_dial.png?raw=true]
+
+![simple dial](https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Default_dial.png?raw=true)
+
 `echo -e "Opt 1\nOpt 2\nOpt 3\nOpt 4" | ./build/wl_RaMen`
 
 Dial with changed options
-![unsimple dial][https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Not_default_dial.png?raw=true]
+
+![unsimple dial](https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Not_default_dial.png?raw=true)
+
 `echo -e "Opt 1\nOpt 2\nOpt 3\nOpt 4" | ./build/wl_RaMen -r 150 -d 200 -b center -s -cb "#40a0a0a0" -cs "#206080"`
 
 Dial with icons (Using some Adwaita Icons)
-![icon dial][https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Icon_dial.png?raw=true]
+
+![icon dial](https://github.com/jy4be/wl-ramen/blob/trunk/screenshots/Icon_dial.png?raw=true)
+
 `echo -e "Opt 1:Adwaita/16x16/places/folder.png\nOpt 2:Adwaita/16x16/places/user-home.png\nOpt 3:Adwaita/16x16/places/user-desktop.png" | ./build/wl_RaMen`
