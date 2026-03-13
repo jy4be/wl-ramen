@@ -12,9 +12,9 @@ struct bwl_pointer_info {
 };
 
 struct bwl_settings {
-    uint16_t width;
-    uint16_t height;
-    struct bwl_command (*update)(struct screenData screen, struct bwl_pointer_info pointer);
+    struct bwl_command (*update)(
+        struct screenData screen, 
+        struct bwl_pointer_info pointer);
 };
 
 struct bwl_command {

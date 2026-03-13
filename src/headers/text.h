@@ -7,8 +7,8 @@
 struct stringPixelBuffers {
     size_t buffersAmount;
     uint8_t **buffers;
-    struct vector stringPixelDimensions[16];
-    uint32_t bearings[16];
+    struct vector stringPixelDimensions[MAX_DIVISIONS];
+    uint32_t bearings[MAX_DIVISIONS];
 };
 
 struct stringPixelBuffers txt_pixelBufferFromStrings(

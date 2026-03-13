@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
+
+#define MAX_DIVISIONS 16 
 
 enum BANNER_POSITON{
     BANNER_NONE,
@@ -17,7 +20,7 @@ struct vector {
 
 struct Image {
     struct vector size;
-    uint8_t  *pixels;
+    uint8_t *pixels;
 };
 
 struct screenData {
@@ -29,7 +32,8 @@ struct screenData {
 struct bannerInfo{
     const char* fontFile;
     const char* bgImage;
-    uint32_t yPosition;
+    enum BANNER_POSITON position;
+    int32_t yOffset;
     uint32_t bgColour;
     uint32_t fgColour;
 };
@@ -46,26 +50,27 @@ struct dial {
     struct vector center;
     uint16_t outerRadius;
     uint16_t innerRadius;
-    struct vector imageDimensions;
-    struct vector outerDivisions[16];
-    struct vector innerDivisions[16];
-    struct vector tabsCenters[16];
-    struct vector normals[16];
-    struct Image  images[16];
+    bool fadeOutDial;
     char** strings;
-    struct bannerInfo banner;
     uint32_t selectColour;
     uint32_t bgColour;
     uint32_t lastFrameHighlightedDivison;
+    struct bannerInfo banner;
+    struct vector imageDimensions;
+    struct vector outerDivisions[MAX_DIVISIONS];
+    struct vector innerDivisions[MAX_DIVISIONS];
+    struct vector tabsCenters[MAX_DIVISIONS];
+    struct vector normals[MAX_DIVISIONS];
+    struct Image  images[MAX_DIVISIONS];
 };
 
 struct dialSettings {
-    struct vector screenDimensions;
     uint16_t divisionsAmount;
     uint16_t dialWidth;
     uint16_t innerRadius;
     char** strings;
     char** imagePaths;
+    bool fadeOutDial;
     struct vector imageDimensions;
     struct bannerSettings banner;
     uint32_t selectColour;
@@ -74,8 +79,8 @@ struct dialSettings {
 
 struct inputStrings {
     size_t amount;
-    char* lines[16];
-    char* imagePaths[16];
+    char* lines[MAX_DIVISIONS];
+    char* imagePaths[MAX_DIVISIONS];
 };
 
 

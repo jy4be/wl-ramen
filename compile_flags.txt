@@ -12,6 +12,7 @@ src/headers
 -L
 lib
 -lwayland-client
+-lwayland-cursor
 -lrt
 -lm
 -lfreetype

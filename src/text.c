@@ -8,8 +8,8 @@
 #include "text.h"
 
 //extern int binary_LiberationSans_Regular_ttf_size;
-extern uint8_t _binary_LiberationSans_Regular_ttf_start[];
-extern uint8_t* _binary_LiberationSans_Regular_ttf_end;
+extern uint8_t _binary_font_LiberationSans_Regular_ttf_start[];
+extern uint8_t* _binary_font_LiberationSans_Regular_ttf_end;
 
 struct fontData {
     FT_Library ft;
@@ -22,7 +22,10 @@ struct layoutInfo {
     uint32_t bufferWidth;
 };
 
-struct layoutInfo layoutFromString(struct fontData data, const char* text){
+struct layoutInfo layoutFromString(
+    struct fontData data, 
+    const char* text)
+{
     struct layoutInfo layout = {0};
     char currentChar;
     while ((currentChar = *(text++)) != '\0'){
@@ -80,7 +83,8 @@ void renderFont(
                     glyph->bitmap.buffer[i * glyph->bitmap.pitch + j];
                 uint16_t bufferX = x + j + xOff;
 
-                if (bufferX < layout.bufferWidth && rowOffset < layout.bufferHeight)
+                if (bufferX < layout.bufferWidth && 
+                        rowOffset < layout.bufferHeight)
                     buffer[rowOffset * layout.bufferWidth + bufferX] = pixel;
             }
         }
@@ -105,7 +109,13 @@ struct stringPixelBuffers txt_pixelBufferFromStrings(
         return pixelBuffers;
     }
     if (fontFile[0] == '\0'){
-        if((errc = FT_New_Memory_Face(font.ft, _binary_LiberationSans_Regular_ttf_start, _binary_LiberationSans_Regular_ttf_end - _binary_LiberationSans_Regular_ttf_start, 0, &font.face)))
+        if((errc = FT_New_Memory_Face(
+            font.ft, 
+            _binary_font_LiberationSans_Regular_ttf_start, 
+            _binary_font_LiberationSans_Regular_ttf_end - 
+                _binary_font_LiberationSans_Regular_ttf_start, 
+            0, 
+            &font.face)))
         {
             printf("Cannot init face: 0x%X\n", errc);
             return pixelBuffers;
@@ -123,7 +133,6 @@ struct stringPixelBuffers txt_pixelBufferFromStrings(
         return pixelBuffers;
     }
 
-
     pixelBuffers.buffers = 
         malloc(sizeof(uint8_t*) * stringsAmount);
 
@@ -131,17 +140,22 @@ struct stringPixelBuffers txt_pixelBufferFromStrings(
          bufferIndex < stringsAmount; 
          bufferIndex++)
     {
-        struct layoutInfo layout = layoutFromString(font, strings[bufferIndex]);
+        struct layoutInfo layout = 
+            layoutFromString(font, strings[bufferIndex]);
         pixelBuffers.bearings[bufferIndex] = layout.yBearing;
         pixelBuffers.buffers[bufferIndex] = malloc(
                 layout.bufferWidth * layout.bufferHeight);
-        memset(pixelBuffers.buffers[bufferIndex], 0x00, layout.bufferWidth * layout.bufferHeight);
+        memset(
+            pixelBuffers.buffers[bufferIndex], 
+            0x00, 
+            layout.bufferWidth * layout.bufferHeight);
         renderFont(
-                font, 
-                pixelBuffers.buffers[bufferIndex], 
-                layout, 
-                strings[bufferIndex]);
-        pixelBuffers.stringPixelDimensions[bufferIndex] = (struct vector) {layout.bufferWidth, layout.bufferHeight};
+            font, 
+            pixelBuffers.buffers[bufferIndex], 
+            layout, 
+            strings[bufferIndex]);
+        pixelBuffers.stringPixelDimensions[bufferIndex] = 
+            (struct vector) {layout.bufferWidth, layout.bufferHeight};
     }
 
     FT_Done_FreeType(font.ft);

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <wayland-client-core.h>
+#include <wayland-cursor.h>
 #include <wayland-client-protocol.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -17,7 +18,6 @@
 #include <wayland-util.h>
 #include "types.h"
 #include "wlr-shell-client-protocol.h"
-#include "xdg-shell-client-protocol.h"
 #include "basewl.h"
 
 /* Shared memory support code */
@@ -80,6 +80,10 @@ struct bwl_state {
     struct wl_buffer *wl_buffer;
     struct wl_pointer *wl_pointer;
     struct zwlr_layer_surface_v1 *wlr_layer_surface;
+    struct wl_output *wl_output;
+
+    struct wl_surface *wl_cursor_surface;
+    struct wl_cursor_image * wl_cursor_image;
 
     uint8_t frame;
     bool shouldRedraw;
@@ -90,7 +94,8 @@ struct bwl_state {
     bool shouldClose;
 
     /* Abstract draw callback*/
-    struct bwl_command (*abstr_update)(struct screenData Data, struct bwl_pointer_info);
+    struct bwl_command (*abstr_update)
+        (struct screenData Data, struct bwl_pointer_info);
     struct bwl_pointer_info pointer;
 };
 
@@ -147,7 +152,9 @@ static void draw(struct bwl_state *state){
         return;
     }
     struct bwl_command cmd =
-        state->abstr_update((struct screenData) {state->width, state->height, state->pixels}, state->pointer);
+        state->abstr_update(
+            (struct screenData) {state->width, state->height, state->pixels}, 
+            state->pointer);
     state->shouldClose = cmd.shouldClose;
     state->isBufferReady = false;
     wl_surface_attach(
@@ -155,7 +162,12 @@ static void draw(struct bwl_state *state){
                     state->wl_buffer, 
                     0, 
                     0);
-    wl_surface_damage_buffer(state->wl_surface, 0, 0, state->width, state->height);
+    wl_surface_damage_buffer(
+        state->wl_surface, 
+        0, 
+        0, 
+        state->width, 
+        state->height);
     wl_surface_commit(state->wl_surface);
 }
 
@@ -188,6 +200,11 @@ static void registry_global(
     {
         state->wl_seat = wl_registry_bind(
                 wl_registry, name, &wl_seat_interface, 9);
+    } else if 
+        (strcmp(interface, wl_output_interface.name) == 0) 
+    {
+        state->wl_output = wl_registry_bind(
+                wl_registry, name, &wl_output_interface, 4);
     }
 }
 
@@ -199,7 +216,6 @@ static void registry_global_remove(
     (void) data;
     (void) wl_registry;
     (void) name;
-    /* This space deliberately left blank */
 }
 
 static const struct wl_registry_listener wl_registry_listener = {
@@ -214,9 +230,10 @@ static void zwlr_layer_surface_v1_configure(
         uint w, 
         uint h) 
 {
-    (void) w;
-    (void) h;
     struct bwl_state *state = data;
+    state->width = w;
+    state->height = h;
+    //reconfigure client
     zwlr_layer_surface_v1_ack_configure(
             zwlr_layer_surface_v1, serial);
 
@@ -236,9 +253,13 @@ static void wl_pointer_enter(
         wl_fixed_t surface_x, 
         wl_fixed_t surface_y) 
 {
-        (void) data;
-        (void) wl_pointer;
-        (void) serial;
+    struct bwl_state *state = data;
+    wl_pointer_set_cursor(
+            wl_pointer, 
+            serial, 
+            state->wl_cursor_surface, 
+            state->wl_cursor_image->hotspot_x, 
+            state->wl_cursor_image->hotspot_y);
         (void) wl_surface;
         (void) surface_x;
         (void) surface_y;
@@ -267,7 +288,9 @@ static void wl_pointer_motion(
     (void) wl_pointer;
     (void) time;
     ((struct bwl_state*) data)->pointer.position = 
-        (struct vector) {wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y)};
+        (struct vector) {
+            wl_fixed_to_int(surface_x), 
+            wl_fixed_to_int(surface_y)};
 }
 
 static void wl_pointer_frame(
@@ -295,8 +318,62 @@ static void wl_pointer_button(
     if (button == BTN_RIGHT) 
         ((struct bwl_state*) data)->pointer.isRightPressed = 
             (state == WL_POINTER_BUTTON_STATE_PRESSED);
+}
 
-
+static void wl_pointer_axis(
+    void *data, 
+    struct wl_pointer* 
+    wl_pointer, 
+    uint time, 
+    uint axis, 
+    wl_fixed_t value)
+{
+    (void) data;
+    (void) axis;
+    (void) value;
+    (void) time;
+    (void) wl_pointer;
+}
+static void wl_pointer_axis_source(
+    void *data, 
+    struct wl_pointer* wl_pointer, 
+    uint source)
+{
+    (void) data;
+    (void) source;
+    (void) wl_pointer;
+}
+static void wl_pointer_axis_stop(void *data, 
+    struct wl_pointer* wl_pointer, 
+    uint time, 
+    uint axis)
+{
+    (void) data;
+    (void) axis;
+    (void) time;
+    (void) wl_pointer;
+}
+static void wl_pointer_axis_discrete(
+    void *data, 
+    struct wl_pointer* wl_pointer, 
+    uint time, 
+    int step)
+{
+    (void) data;
+    (void) time;
+    (void) step;
+    (void) wl_pointer;
+}
+static void wl_pointer_axis_relative_direction(
+    void *data, 
+    struct wl_pointer* wl_pointer, 
+    uint time, 
+    uint axis)
+{
+    (void) data;
+    (void) time;
+    (void) axis;
+    (void) wl_pointer;
 }
 
 struct wl_pointer_listener wl_pointer_listener = {
@@ -304,10 +381,18 @@ struct wl_pointer_listener wl_pointer_listener = {
     .leave = wl_pointer_leave,
     .motion = wl_pointer_motion,
     .frame = wl_pointer_frame,
-    .button = wl_pointer_button
+    .button = wl_pointer_button,
+    .axis = wl_pointer_axis,
+    .axis_source = wl_pointer_axis_source,
+    .axis_stop = wl_pointer_axis_stop,
+    .axis_discrete = wl_pointer_axis_discrete,
+    .axis_relative_direction = wl_pointer_axis_relative_direction,
+    .axis_value120 = wl_pointer_axis_discrete
 };
 
-struct bwl_pointer_info bwl_getPointerInfo(struct bwl_state * state){
+struct bwl_pointer_info bwl_getPointerInfo(
+    struct bwl_state * state)
+{
     return state->pointer;
 }
 
@@ -315,23 +400,18 @@ struct bwl_state *bwl_init(struct bwl_settings settings)
 {
     struct bwl_state state = { 0 };
     state.abstr_update = settings.update;
-    state.width = settings.width;
-    state.height = settings.height;
     state.isBufferReady = true;
     state.wl_display = wl_display_connect(NULL);
-    //TODO TOFIX
     state.wl_registry = 
         wl_display_get_registry(state.wl_display);
     wl_registry_add_listener(
             state.wl_registry, &wl_registry_listener, &state);
     wl_display_roundtrip(state.wl_display);
-
     state.wl_pointer = wl_seat_get_pointer(state.wl_seat);
     wl_pointer_add_listener(
             state.wl_pointer, &wl_pointer_listener, &state);
-
     state.wl_surface = 
-        wl_compositor_create_surface( state.wl_compositor);
+        wl_compositor_create_surface( state.wl_compositor); 
 
     state.wlr_layer_surface = 
         zwlr_layer_shell_v1_get_layer_surface(
@@ -340,17 +420,34 @@ struct bwl_state *bwl_init(struct bwl_settings settings)
                 NULL, 
                 ZWLR_LAYER_SHELL_V1_LAYER_TOP, 
                 "qSel");
+    zwlr_layer_surface_v1_set_margin(state.wlr_layer_surface, 0, 0, 0, 0);
+    zwlr_layer_surface_v1_set_anchor(
+        state.wlr_layer_surface, 
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | 
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | 
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | 
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
     zwlr_layer_surface_v1_set_size(
-            state.wlr_layer_surface, 
-            settings.width, 
-            settings.height);
+            state.wlr_layer_surface, 0, 0);
     
     zwlr_layer_surface_v1_add_listener(
             state.wlr_layer_surface, 
             &wlr_layer_surface_listener, 
             &state);
     
-    //wl_pointer_set_cursor(struct wl_pointer *wl_pointer, uint32_t serial, struct wl_surface *surface, int32_t hotspot_x, int32_t hotspot_y)
+    struct wl_cursor_theme *cursorTheme = 
+        wl_cursor_theme_load(NULL, 24, state.wl_shm);
+    struct wl_cursor *cursor = 
+        wl_cursor_theme_get_cursor(cursorTheme, "left_ptr");
+    struct wl_buffer *cursorBuffer = 
+        wl_cursor_image_get_buffer(cursor->images[0]);
+    struct wl_surface *cursorSurface = 
+        wl_compositor_create_surface(state.wl_compositor);
+    wl_surface_attach(cursorSurface, cursorBuffer, 0, 0);
+    wl_surface_commit(cursorSurface);
+
+    state.wl_cursor_image = cursor->images[0];
+    state.wl_cursor_surface = cursorSurface;
     
     wl_surface_commit(state.wl_surface);
     

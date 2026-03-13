@@ -4,11 +4,14 @@
 #include "text.h"
 
 struct bannerInfo BA_bannerInfoFromSettings(
-        struct bannerSettings settings,
-        struct vector screenDimensions,
-        uint32_t bgColour,
-        uint32_t fgColour,
-        uint32_t outerRadius);
-void BA_renderBanner(struct screenData screen, struct stringPixelBuffers pixelBuffers, struct bannerInfo banner, size_t stringIndex);
+    struct bannerSettings settings,
+    uint32_t bgColour,
+    uint32_t fgColour,
+    uint32_t outerRadius);
+void BA_renderBanner(
+    struct screenData screen, 
+    struct stringPixelBuffers pixelBuffers, 
+    struct bannerInfo banner, 
+    size_t stringIndex);
 
 #endif
